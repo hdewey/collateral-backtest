@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 
 // types
-import { BacktestConfig, PriceSet, tokenToUSD } from "../modules/utils";
+import { PriceSet, tokenToUSD } from "../modules/utils";
 
 // functions
 import { twap, blocksToQuery } from '../modules/utils';
@@ -30,6 +30,20 @@ export default async (request: VercelRequest, response: VercelResponse) => {
   response.json(
     { tokenDown }
   );
+}
+
+export interface BacktestConfig {
+  address     : string,
+  period      : number, // normally 68 blocks is 15 mins
+  segmentsBack: number, // should be divisible by 100 (amt of blocks to go back)
+  end         : number // getLatestBlock() from web3
+  
+  financials : {
+    liquidationIncentive: number,
+    collateralFactor    : number
+  }
+
+  provider: string
 }
 
 // calculate token down given a set of prices

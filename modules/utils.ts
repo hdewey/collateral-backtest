@@ -24,6 +24,7 @@ import Queue from 'smart-request-balancer';
 
 // using uuid as unique request identifier for queued request function
 import { v4 as uuidv4 } from 'uuid';
+import { BacktestConfig } from "../api/historical";
 
 // have to checksum addresses for hash to create pairID creation (use require because checksum has no types)
 const checksum = require('eth-checksum');
@@ -50,46 +51,6 @@ export const uniswapFetchPairID = async (address: string):Promise<string> => {
   const pair   = uni_Pair.getAddress(token0, token1);
 
   return pair.toLowerCase();
-}
-
-// return test with all scores 0 (used for ETH)
-export const returnSafeTest = (address: string, symbol: string):ScoreBlock => {
-  return {
-    score: {
-      address   : address,
-      symbol    : symbol,
-      historical: 0,
-      volatility: 0,
-      crash     : 0,
-      liquidity : 0,
-      overall   : 0
-    } as Score,
-    assetInfo: {
-      collateralFactor: 0,
-      tokenDown       : 0,
-      marketCap       : 0,
-    }
-  } as ScoreBlock
-}
-
-// return test for non-scorable assets
-export const returnMissingTest = (address: string, symbol: string):ScoreBlock => {
-  return {
-    score: {
-      address   : address,
-      symbol    : symbol,
-      historical: "*",
-      volatility: "*",
-      crash     : "*",
-      liquidity : "*",
-      overall   : "*"
-    } as Score,
-    assetInfo: {
-      collateralFactor: null,
-      tokenDown       : null,
-      marketCap       : null,
-    }
-  } as ScoreBlock
 }
 
 // ---------------- testing provider functions ----------------
@@ -205,12 +166,6 @@ export const checkAudits = (tickers: any):boolean => {
   }
 }
 
-// calculate volatility from price array
-export const calcVolatility = (prices: number[]) => {
-  return Math.max(...prices) / Math.min(...prices);
-}
-
-
 // ---------------- Sushiswap ----------------
 
 export const currentETHPrice = async ():Promise<any> => {
@@ -286,79 +241,6 @@ export const tokenToUSD = async (blocks: number[], ratioPrices: number[]) => {
   } finally {
     return prices;
   }
-}
-// ---------------- dev override functions ---------------
-
-// these functions handle the matching of an address or poolID to it's corresponding override
-
-// array of address overrides
-const addressOvr = _.compact(assetOverrides.map( (override) => {
-  if (override.underlying) return override 
-  else return null
-}));
-
-// array of test specific overrides
-const testOvr = _.compact(assetOverrides.map( (override) => {
-  if (override.tests) return override
-  else return null
-}));
-
-// array of pool overrides (multisig)
-const poolOvr = _.compact(poolOverrides.map( (override) => {
-  if (override.poolID) return override
-  else return null
-}));
-
-export const fetchAddressOverride = (address: string) => {
-  let override = addressOvr.find (o => o.address === address);
-  return override ? override.underlying : address
-}
-
-export const fetchTestOverride =  async (address: string) => {
-  let override = testOvr.find( o => o.address === address)
-  if (override) {
-    return await fillOverride(override.tests)
-  } else {
-    return await fillOverride([]);
-  }
-}
-
-// return override for pool specific tests (solely multisig at the moment)
-export const fetchMultisigOverride = (poolID: string) => {
-  let override = poolOvr.find (o => o.poolID === poolID);
-
-  if (override === undefined) return false
-  else return override
-}
-
-const fillOverride = async (override: {test: string, section: string, value: boolean}[] | []) => {
-
-  let filledOverride = {
-    crash: {
-      twitter  : true,
-      audit    : true,
-      marketCap: true
-    },
-    liquidity: {
-      totalLiquidity: true,
-      lpAddresses   : true
-    },
-    volatility: {
-      marketCap : true,
-      volatility: true
-    },
-    historical: {
-      backtest: true
-    }
-  } as FilledOverride
-  if (override) {
-    override.forEach((element) => {
-
-      (filledOverride as any)[element.test][element.section] = element.value;
-    });
-  }
-
-  return filledOverride;
 }
 
 // ---------------- main request function ---------------
@@ -502,20 +384,6 @@ export interface Score {
   crash     : number | string,
   liquidity : number | string,
   overall   : number | string
-}
-
-export interface BacktestConfig {
-  address     : string,
-  period      : number, // normally 68 blocks is 15 mins
-  segmentsBack: number, // should be divisible by 100 (amt of blocks to go back)
-  end         : number // getLatestBlock() from web3
-  
-  financials : {
-    liquidationIncentive: number,
-    collateralFactor    : number
-  }
-
-  provider: string
 }
 
 // type for fetched data from different apis (unsorted)
