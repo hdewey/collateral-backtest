@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 
 // types
-import { PriceSet, tokenToUSD } from "../modules/utils";
+import { fetchLatestBlock, PriceSet, tokenToUSD } from "../modules/utils";
 
 // functions
 import { twap, blocksToQuery } from '../modules/utils';
@@ -15,16 +15,31 @@ import uniswap   from "../modules/fetch/uniFetch";
 export default async (request: VercelRequest, response: VercelResponse) => {
 
   // financials = liquidation incentive and collateral factor (used for calculating tokenDown)
-  const { financials } = request.body as BacktestConfig;
+  // const { financials } = request.body as BacktestConfig;
+
+  const { address } = request.query as { [key: string]: string };
 
   response.setHeader("Access-Control-Allow-Origin", "*");
   response.setHeader("Cache-Control", "max-age=2592000, s-maxage=2592000");
 
   response.setHeader('Access-Control-Allow-Credentials', 'true');
-  response.setHeader('Access-Control-Allow-Methods', 'POST');
+  response.setHeader('Access-Control-Allow-Methods', 'GET');
 
-  const priceData: PriceSet = await queryExchange(request.body);
-  const tokenDown: number   = await calcTokenDown(priceData, financials);
+  const testConfig: BacktestConfig = {
+    address: address,
+    period : 68,
+    segmentsBack: 6500,
+    end : 14077409,
+    financials: {
+      collateralFactor: 0.75,
+      liquidationIncentive: 0.15
+    },
+    provider: "sushiswap"
+  }
+  
+
+  const priceData: PriceSet = await queryExchange(testConfig);
+  const tokenDown: number   = await calcTokenDown(priceData, testConfig.financials);
 
   // send token down
   response.json(

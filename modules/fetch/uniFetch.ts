@@ -1,4 +1,4 @@
-// homemode fork of @sushiswap/sushi-data, forked to query uniswap subgraph
+// fork of @sushiswap/sushi-data, forked to query uniswap subgraph
 import uniData from 'uni-data';
 
 // functions
